@@ -7,11 +7,17 @@ Sly & Robbie — with the three ingredients of every groove baked into the data:
 2. **Velocity** — accents, normals, and the ghost notes that make you dance
 3. **Micro-timing** — per-hit offsets in beat-based ticks (PPQ 480), so the lean survives tempo changes
 
-The full pattern database ([`src/data/patterns.json`](src/data/patterns.json)) is bundled
-into the app at build time — nothing to upload. Every groove is drawn in the series' grid
-language (dot size = velocity, tails = micro-timing lean), playable in the browser with a
-synthesized kit that honors offsets, ghosts and swing, and downloadable as a Standard MIDI
-File ([`public/midi/`](public/midi)).
+The full pattern database ([`src/data/patterns.json`](src/data/patterns.json)) is the single
+source of truth, bundled into the app at build time — nothing to upload. Every groove is drawn
+in the series' grid language (dot size = velocity, tails = micro-timing lean), playable in the
+browser through a choice of synthesized kits (Studio, TR-808, TR-909, Dusty) with a switchable
+metronome, and downloadable as a Standard MIDI File.
+
+The MIDI files are **generated from the database** by [`scripts/build-midi.mjs`](scripts/build-midi.mjs)
+(wired as `prebuild`/`predev`), sharing the exact timing math with the in-browser player. When a
+groove's first hit leans ahead of beat 1 (negative offset), that hit becomes tick 0 and the whole
+grid shifts later by the same amount — relative micro-timing is preserved instead of clamped, and
+the metronome clicks the true (shifted) grid.
 
 ## Chapters
 

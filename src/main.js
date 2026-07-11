@@ -1,7 +1,7 @@
 import './style.css'
 import BANK from './data/patterns.json'
 import { renderGridSVG, renderVerdictSVG } from './render.js'
-import { togglePlay, stopPlayback } from './audio.js'
+import { togglePlay, stopPlayback, KITS, getKit, setKit, getMetronome, setMetronome } from './audio.js'
 import { CHAPTERS } from './chapters.js'
 import { GUIDE_HTML } from './guide.js'
 
@@ -20,15 +20,24 @@ app.innerHTML = `
     <button class="tab" data-view="all">All grooves</button>
     <button class="tab" data-view="guide">Field guide</button>
   </nav>
+  <div class="soundbar">
+    <label>kit
+      <select id="kitsel">${KITS.map(k=>`<option value="${k.id}"${k.id===getKit()?' selected':''}>${k.label}</option>`).join('')}</select>
+    </label>
+    <label class="metro"><input type="checkbox" id="metro"${getMetronome()?' checked':''}> metronome</label>
+  </div>
   <main id="view"></main>
   <p class="footer">Dot size = velocity (tiny = ghost note). Tails show micro-timing: left = ahead of the grid,
-  right = behind. Hollow = open hat. Swing badge = MPC-style 16th swing to dial on hardware. Playback is a sketch
-  kit — synthesized one-shots scheduled with the exact tick offsets from the bank. Every pattern is downloadable
-  as a Standard MIDI File.</p>
+  right = behind. Hollow = open hat. Swing badge = MPC-style 16th swing to dial on hardware. Playback uses
+  synthesized kits (pick one above) scheduled with the exact tick offsets from the bank; the metronome clicks the
+  true grid, so hits that lean ahead of beat 1 play before the click. Every pattern is downloadable as a Standard
+  MIDI File, generated from the database at build time.</p>
 `
 
 const viewEl = document.getElementById('view')
 const tabsEl = document.getElementById('tabs')
+document.getElementById('kitsel').addEventListener('change', e => setKit(e.target.value))
+document.getElementById('metro').addEventListener('change', e => setMetronome(e.target.checked))
 
 /* ---------------- pattern card */
 function metaLine(p){

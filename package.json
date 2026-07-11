@@ -5,7 +5,10 @@
   "type": "module",
   "description": "Pocket Science — a playable atlas of 67 grooves with velocity, micro-timing and the stories that connect them",
   "scripts": {
+    "build:midi": "node scripts/build-midi.mjs",
+    "predev": "npm run build:midi",
     "dev": "vite",
+    "prebuild": "npm run build:midi",
     "build": "vite build",
     "preview": "vite preview"
   },
