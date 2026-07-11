@@ -72,12 +72,17 @@ notes to a bass instrument — any pitch works; the <em>placement</em> is what m
 especially the +40–50ms sag.</p>
 
 <h2>Using the MIDI files</h2>
-<p>Every card has a ⬇ MIDI link — a Standard MIDI File, loop-length exact (1 or 2 bars),
-tempo embedded, GM drum mapping (kick 36, snare 38, rim 37, closed hat 42, open hat 46,
-ride 51, crash 49, clap 39, tambourine 54, shaker 70, cowbell 56, toms 45/48/50, bass 35).
-Offsets appear as slightly off-grid notes — that's the whole point,
-<b>don't quantize them away</b>. Elektron users: one 1/384-of-a-bar microtiming step
-= 5 ticks here, so <code>+1/64</code> ≈ +6 Elektron clicks.</p>
+<p>Every card has a ⬇ MIDI link — a Standard MIDI File generated from the pattern database
+at build time, loop-length exact (1 or 2 bars), tempo embedded, GM drum mapping (kick 36,
+snare 38, rim 37, closed hat 42, open hat 46, ride 51, crash 49, clap 39, tambourine 54,
+shaker 70, cowbell 56, toms 45/48/50, bass 35). Offsets appear as slightly off-grid notes —
+that's the whole point, <b>don't quantize them away</b>. Elektron users: one 1/384-of-a-bar
+microtiming step = 5 ticks here, so <code>+1/64</code> ≈ +6 Elektron clicks.</p>
+<p>One subtlety: MIDI time can't go below zero, so when a groove's first hit leans AHEAD of
+beat 1 (Dilla's kicks, punk's rush), that hit becomes the file's tick 0 and the whole grid
+shifts later by the same amount — relative feel preserved exactly. Playback in the app does
+the same, which is why the metronome click on beat 1 lands slightly <em>after</em> those
+early hits. That's not a bug; that's the lean.</p>
 
 <p>Have fun. Remember Purdie's law: <b>the ghost notes make you dance.</b></p>
 `;

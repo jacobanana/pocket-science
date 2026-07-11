@@ -1,4 +1,5 @@
 node_modules/
 dist/
+public/midi/
 .DS_Store
 *.local

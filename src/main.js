@@ -1,7 +1,7 @@
 import './style.css'
 import BANK from './data/patterns.json'
 import { renderGridSVG, renderVerdictSVG } from './render.js'
-import { togglePlay, stopPlayback } from './audio.js'
+import { togglePlay, stopPlayback, KITS, getKit, setKit, getMetronome, setMetronome } from './audio.js'
 import { CHAPTERS } from './chapters.js'
 import { GUIDE_HTML } from './guide.js'
 
@@ -12,23 +12,33 @@ const app = document.getElementById('app')
 app.innerHTML = `
   <p class="eyebrow">The timing-analysis series · playable archive</p>
   <h1>Pocket Science</h1>
-  <p class="lede">A groove atlas: all ${BANK.patterns.length} patterns from the series — Bonham to Sly &amp; Robbie —
-  drawn in the grid language (dot size = velocity, tails = micro-timing lean) and playable with a synthesized kit
-  that honors offsets, ghosts and swing. Open a chapter to walk a lineage groove by groove.</p>
+  <p class="lede">Every groove is three decisions: which notes, how hard, and — the secret — how far from the
+  grid. From Bonham's fat, late snare to Dilla's drunk kicks to Robbie Shakespeare's deep bass sag, this atlas
+  maps where the beat actually lives. Press play and listen for the pocket: the ghosts, the swing, the lean,
+  the space between drum and bass. Open a chapter to hear how one groove became the next.</p>
   <nav class="tabs" id="tabs">
     <button class="tab" data-view="chapters">Chapters</button>
     <button class="tab" data-view="all">All grooves</button>
     <button class="tab" data-view="guide">Field guide</button>
   </nav>
+  <div class="soundbar">
+    <label>kit
+      <select id="kitsel">${KITS.map(k=>`<option value="${k.id}"${k.id===getKit()?' selected':''}>${k.label}</option>`).join('')}</select>
+    </label>
+    <label class="metro"><input type="checkbox" id="metro"${getMetronome()?' checked':''}> metronome</label>
+  </div>
   <main id="view"></main>
-  <p class="footer">Dot size = velocity (tiny = ghost note). Tails show micro-timing: left = ahead of the grid,
-  right = behind. Hollow = open hat. Swing badge = MPC-style 16th swing to dial on hardware. Playback is a sketch
-  kit — synthesized one-shots scheduled with the exact tick offsets from the bank. Every pattern is downloadable
-  as a Standard MIDI File.</p>
+  <p class="footer">How to read the grids: dot size = how hard the hit lands (tiny = ghost note). Tails show
+  the lean — left of the line is ahead of the beat, right is behind. Hollow circles are open hats. The swing
+  badge is the MPC-style 16th swing to dial in on hardware. The metronome clicks the true beat, so hits that
+  lean ahead of the one will sound just before the click — that's the lean, not a mistake. Every groove is
+  downloadable as MIDI for your DAW or drum machine.</p>
 `
 
 const viewEl = document.getElementById('view')
 const tabsEl = document.getElementById('tabs')
+document.getElementById('kitsel').addEventListener('change', e => setKit(e.target.value))
+document.getElementById('metro').addEventListener('change', e => setMetronome(e.target.checked))
 
 /* ---------------- pattern card */
 function metaLine(p){
@@ -45,6 +55,7 @@ function patternCard(p){
         <p class="tmeta">${metaLine(p)}</p>
         <p style="margin-bottom:6px">
           <span class="chip">${p.chapter||'—'}</span>
+          ${p.genre?`<span class="chip genre">${p.genre}</span>`:''}
           ${p.swing_16th?`<span class="chip sw">swing ${p.swing_16th}%</span>`:''}
         </p>
       </div>
@@ -61,9 +72,14 @@ function patternCard(p){
 
 /* ---------------- view: all grooves */
 function renderAll(){
+  const genres = [...new Set(BANK.patterns.map(p=>p.genre).filter(Boolean))].sort()
   viewEl.innerHTML = `
     <div class="controls">
-      <input type="text" id="search" placeholder="search name / feel / chapter…">
+      <input type="text" id="search" placeholder="search name / feel / genre…">
+      <select id="genre">
+        <option value="">All genres</option>
+        ${genres.map(g=>`<option>${g}</option>`).join('')}
+      </select>
       <select id="sort">
         <option value="id">Sort: series order</option>
         <option value="bpm">Sort: BPM</option>
@@ -72,14 +88,16 @@ function renderAll(){
     </div>
     <p class="count" id="count"></p>
     <div id="list"></div>`
-  const searchEl = viewEl.querySelector('#search'), sortEl = viewEl.querySelector('#sort'),
+  const searchEl = viewEl.querySelector('#search'), genreEl = viewEl.querySelector('#genre'),
+        sortEl = viewEl.querySelector('#sort'),
         countEl = viewEl.querySelector('#count'), listEl = viewEl.querySelector('#list')
 
   function render(){
     stopPlayback()
-    const q = (searchEl.value||'').toLowerCase(), sort = sortEl.value
+    const q = (searchEl.value||'').toLowerCase(), ge = genreEl.value, sort = sortEl.value
     let ps = BANK.patterns.filter(p =>
-      (!q || (p.name+' '+(p.feel||'')+' '+(p.chapter||'')).toLowerCase().includes(q)))
+      (!ge || p.genre===ge) &&
+      (!q || (p.name+' '+(p.feel||'')+' '+(p.chapter||'')+' '+(p.genre||'')).toLowerCase().includes(q)))
     if(sort==='bpm') ps = [...ps].sort((a,b)=>a.bpm-b.bpm)
     else if(sort==='name') ps = [...ps].sort((a,b)=>a.name.localeCompare(b.name))
     countEl.textContent = `${ps.length} pattern${ps.length!==1?'s':''}`
@@ -88,6 +106,7 @@ function renderAll(){
     ps.forEach(p => listEl.appendChild(patternCard(p)))
   }
   searchEl.addEventListener('input', render)
+  genreEl.addEventListener('change', render)
   sortEl.addEventListener('change', render)
   render()
 }
