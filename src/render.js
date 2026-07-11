@@ -12,6 +12,35 @@ export const ROLE_ORDER = ["openhat","hat","ride","crash","shaker","tamb","cowbe
 
 export function stepTicks(grid){ return grid===12?160 : grid===8?240 : 120; }
 
+function velKind(v){ return v<=25?'feathered' : v<=55?'ghost' : v>=112?'accent' : 'normal' }
+
+/* nearest note-value fraction for a tick offset (whole note = 1920 ticks),
+   matching the database's off_approx convention (e.g. +1/192) */
+function offFraction(t){
+  const a = Math.abs(t)
+  if(!a) return '0'
+  const denoms = [16,24,32,48,64,96,128,192,256,384]
+  let best = denoms[0]
+  for(const d of denoms) if(Math.abs(1920/d - a) < Math.abs(1920/best - a)) best = d
+  return `${t>0?'+':'−'}1/${best}`
+}
+
+function hitTip(p, role, h, st){
+  const offT = h.off_ticks || 0
+  const lines = [`${ROLE[role].label} · vel ${h.vel} (${velKind(h.vel)})`]
+  if(offT === 0){
+    lines.push('dead on the beat')
+  } else {
+    const frac = (h.off_approx && h.off_approx !== '0') ? h.off_approx.replace('-','−') : offFraction(offT)
+    const ms = h.off_ms_at_native_bpm ?? Math.round(offT*60000/(p.bpm*480))
+    lines.push(`${frac} ${offT>0?'behind':'ahead of'} the beat (${ms>0?'+':'−'}${Math.abs(ms)} ms)`)
+  }
+  if(p.swing_16th && p.grid===16 && h.step%2===1){
+    lines.push(`plus ${p.swing_16th}% swing on this 16th`)
+  }
+  return lines.join('\n')
+}
+
 function labelsFor(grid,bars){
   if(grid===12) return ["1","","","2","","","3","","","4","",""];
   if(grid===8){
@@ -77,6 +106,7 @@ export function renderGridSVG(p){
     const rc = ROLE[r];
     g += `<text x="6" y="${y+4}" fill="${rc.cval}" font-family="Space Mono" font-size="10.5">${rc.label}</text>`;
     g += `<line x1="${L}" y1="${y}" x2="${R}" y2="${y}" stroke="#2E2917" stroke-width="1" stroke-dasharray="2 5"/>`;
+    const tapR = Math.min(11, w/2 - 0.5); // enlarged invisible tap target, capped so neighbors don't overlap
     p.tracks[r].forEach(h=>{
       const offT = h.off_ticks||0;
       const cx = x(h.step) + offT/st*w;
@@ -90,6 +120,7 @@ export function renderGridSVG(p){
       } else {
         g += `<circle cx="${cx}" cy="${y}" r="${rr}" fill="${rc.cval}" ${h.vel<=55?'opacity="0.55"':''}/>`;
       }
+      g += `<circle class="hit" cx="${cx}" cy="${y}" r="${Math.max(rr+2, tapR)}" fill="transparent" data-tip="${hitTip(p, r, h, st)}"/>`;
     });
   });
   return `<svg viewBox="0 0 700 ${H}" role="img" aria-label="Step grid for ${p.name}">${g}</svg>`;

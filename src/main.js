@@ -4,6 +4,7 @@ import { renderGridSVG, renderVerdictSVG } from './render.js'
 import { togglePlay, stopPlayback, KITS, getKit, setKit, getMetronome, setMetronome } from './audio.js'
 import { CHAPTERS } from './chapters.js'
 import { GUIDE_HTML } from './guide.js'
+import { initTooltip } from './tooltip.js'
 
 const byId = Object.fromEntries(BANK.patterns.map(p => [p.id, p]))
 const MIDI_BASE = `${import.meta.env.BASE_URL}midi/`
@@ -184,4 +185,5 @@ function route(){
 tabsEl.querySelectorAll('.tab').forEach(t =>
   t.addEventListener('click', () => { location.hash = `#/${t.dataset.view}` }))
 window.addEventListener('hashchange', route)
+initTooltip()
 route()

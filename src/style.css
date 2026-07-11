@@ -52,6 +52,14 @@ h1{font-family:'Staatliches',sans-serif;font-size:clamp(34px,8vw,54px);line-heig
   font-family:'Space Mono',monospace;font-size:12px;padding:8px 14px;cursor:pointer}
 .playbtn.on{background:var(--accent);color:#12100E;border-color:var(--accent)}
 svg{width:100%;height:auto;display:block}
+svg .hit{cursor:pointer}
+
+/* note tooltip */
+.notetip{position:absolute;z-index:60;background:var(--panel2);border:1px solid var(--accent);border-radius:8px;
+  padding:8px 11px;font-family:'Space Mono',monospace;font-size:11px;line-height:1.55;color:var(--bone);
+  pointer-events:none;max-width:260px;box-shadow:0 6px 18px rgba(0,0,0,.55)}
+.notetip .t1{color:var(--accent);font-weight:700}
+.notetip[hidden]{display:none}
 .feel{font-size:13px;color:var(--bone);opacity:.85;margin-top:6px}
 .cardfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px}
 .midilink{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--line)}
