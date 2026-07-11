@@ -1,0 +1,15 @@
+{
+  "name": "pocket-science",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Pocket Science — a playable atlas of 67 grooves with velocity, micro-timing and the stories that connect them",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}
