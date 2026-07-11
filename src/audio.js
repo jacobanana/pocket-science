@@ -61,11 +61,28 @@ function clapBurst(out,t,vol,dec,hp,lp){ [0,0.011,0.023,0.038].forEach((d,i)=>no
 
 /* ---------------- the kits */
 export const KITS = [
+  { id:'auto',   label:'Auto (match genre)' },
   { id:'studio', label:'Studio (acoustic)' },
   { id:'tr808',  label:'TR-808' },
   { id:'tr909',  label:'TR-909' },
   { id:'dusty',  label:'Dusty (boom-bap)' },
 ]
+
+/* which kit a genre wants: played-by-hand genres get the acoustic kit,
+   sample-culture genres get the dusty sampler, digital riddims the 808,
+   club genres the 909 */
+export const GENRE_KITS = {
+  Rock:'studio', Blues:'studio', Punk:'studio', Metal:'studio', Funk:'studio',
+  Soul:'studio', Jazz:'studio', Disco:'studio', Reggae:'studio', Latin:'studio',
+  Afrobeat:'studio', 'Neo-Soul':'studio',
+  'Hip-Hop':'dusty', 'Jungle / DnB':'dusty',
+  'R&B':'tr808', 'Electro-Funk':'tr808', Dancehall:'tr808', Reggaeton:'tr808',
+  House:'tr909', Techno:'tr909', Trance:'tr909', 'UK Garage':'tr909',
+}
+export function kitFor(p){
+  if(currentKit !== 'auto') return currentKit
+  return GENRE_KITS[p.genre] || 'studio'
+}
 
 const VOICES = {
   studio: {
@@ -142,10 +159,11 @@ function soft(v){ return 0.45 + 0.55*v }
 
 /* ---------------- kit + metronome state */
 const store = typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {} }
-let currentKit = store.getItem('ps-kit') in VOICES ? store.getItem('ps-kit') : 'studio'
+const validKit = id => id === 'auto' || id in VOICES
+let currentKit = validKit(store.getItem('ps-kit')) ? store.getItem('ps-kit') : 'auto'
 let metronomeOn = store.getItem('ps-metro') === '1'
 export function getKit(){ return currentKit }
-export function setKit(id){ if(VOICES[id]){ currentKit = id; store.setItem('ps-kit', id) } }
+export function setKit(id){ if(validKit(id)){ currentKit = id; store.setItem('ps-kit', id) } }
 export function getMetronome(){ return metronomeOn }
 export function setMetronome(on){ metronomeOn = !!on; store.setItem('ps-metro', on?'1':'0') }
 
@@ -175,9 +193,10 @@ export function togglePlay(p, btn){
   stopPlayback() // enforce: one and only one pattern playing
   const c = ac(); if(c.state === 'suspended') c.resume()
 
+  const sessionKit = kitFor(p)
   const gain = c.createGain(); gain.gain.value = 1
   let out = gain
-  if(currentKit === 'dusty'){ // kit-level lo-fi ceiling
+  if(sessionKit === 'dusty'){ // kit-level lo-fi ceiling
     const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200
     lp.connect(gain); out = lp
   }
@@ -191,7 +210,7 @@ export function togglePlay(p, btn){
   const loopStart = c.currentTime + 0.08
   let nextLoop = 0
   function schedule(){
-    const voices = VOICES[currentKit]
+    const voices = VOICES[kitFor(p)]
     const horizon = c.currentTime + 0.35
     while(loopStart + nextLoop*loopSec < horizon){
       const base = loopStart + nextLoop*loopSec
