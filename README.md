@@ -13,19 +13,25 @@ language (dot size = velocity, tails = micro-timing lean), playable in the brows
 synthesized kit that honors offsets, ghosts and swing, and downloadable as a Standard MIDI
 File ([`public/midi/`](public/midi)).
 
-## Paths
+## Chapters
 
-The atlas includes curated **paths** — lineages you can walk groove by groove, with notes on
-what changes at each step:
+The atlas is organized as **chapters** — curated lineages you walk groove by groove, with notes
+on what changes at each step. Every chapter opens with its **timing verdict**: a chart plotting
+where each voice of that lineage sits against the beat (ahead / on the beat / behind). Every
+pattern in the database belongs to at least one chapter:
 
 - **Blues → Rock: the flattening** — the triplet shuffle hammered into straight eighths
 - **The Bonham path** — behind-the-beat weight and the half-time shuffle conversation (Purdie → Bonham → Porcaro)
+- **The Pocket Pantheon** — Al Jackson, Purdie, Ringo, Watts, Moon, Copeland: six answers to where you sit
+- **Funk: The One** — James Brown's beat-1 accent through Sly Stone, Tower of Power, P-Funk and Prince
+- **New Orleans: the Crack** — bembé → second line → Zigaboo's in-between offbeats
+- **Tony Allen: Afrobeat** — bembé roots plus JB funk, never the same bar twice
 - **The Questlove path** — James Brown → breaks → Dilla's drunk MPC → Questlove playing the machine
-- **Breaks → Jungle → Drum & Bass** — five sampled bars become thirty years of dance music
+- **Breaks → Jungle → UK** — five sampled bars become thirty years of dance music
 - **The Producers path** — Premier, Pete Rock, RZA, Dre, Timbaland, Neptunes: micro-timing as authorship
 - **Kingston: One Drop → Dancehall** — Barrett empties beat one; Sly & Robbie digitize it; the bass always sags
+- **Latin: the Clave Line** — bembé → son clave → samba → bossa → dembow
 - **Four-on-the-floor: 1938 → Techno** — from Papa Jo's feathered kick to the machine grid
-- **New Orleans: the Crack** — bembé → second line → Zigaboo's in-between offbeats
 
 ## Development
 

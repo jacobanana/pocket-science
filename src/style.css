@@ -71,6 +71,12 @@ svg{width:100%;height:auto;display:block}
 .stepbody{flex:1;min-width:0;padding-bottom:18px}
 .stepnote{font-size:13.5px;color:var(--bone);opacity:.92;margin-bottom:10px;max-width:66ch}
 
+/* chapter verdict */
+.verdict{padding:16px 14px 12px;margin-bottom:24px}
+.vhead{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--bone);border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:12px}
+.verdict .note{font-size:13.5px;color:var(--bone);opacity:.9;margin-top:8px}
+
 /* field guide */
 .guide h2{font-family:'Staatliches',sans-serif;font-size:26px;color:var(--accent);letter-spacing:.03em;margin:28px 0 10px}
 .guide h2:first-child{margin-top:0}

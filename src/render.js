@@ -22,6 +22,37 @@ function labelsFor(grid,bars){
   return bars===2?l.concat(l):l;
 }
 
+/* The chapter "verdict" chart: one ahead/behind axis, a dot per voice showing
+   its characteristic lean (in ticks @ PPQ 480), optional jitter band for
+   feels that scatter both ways. Modeled on the series' timing-study pages. */
+export function renderVerdictSVG(v){
+  const items = v.items
+  const rowH = 36, top = 30, L = 190, R = 680, C = (L+R)/2, scale = 6
+  const H = top + items.length*rowH + 46
+  const axisY = top + items.length*rowH + 4
+  const x = lean => C + Math.max(-40, Math.min(40, lean))*scale
+  let g = `<line x1="${C}" y1="${top-14}" x2="${C}" y2="${axisY+6}" stroke="#9A9077" stroke-width="1.5" stroke-dasharray="4 4"/>`
+  g += `<line x1="${L}" y1="${axisY}" x2="${R}" y2="${axisY}" stroke="#38321F" stroke-width="2"/>`
+  g += `<text x="${C}" y="${axisY+26}" fill="#F1EADB" font-family="Space Mono" font-size="12" text-anchor="middle">ON THE BEAT</text>`
+  g += `<text x="${L}" y="${axisY+26}" fill="#9A9077" font-family="Space Mono" font-size="11" text-anchor="start">← AHEAD</text>`
+  g += `<text x="${R}" y="${axisY+26}" fill="#9A9077" font-family="Space Mono" font-size="11" text-anchor="end">BEHIND →</text>`
+  items.forEach((it, i) => {
+    const y = top + i*rowH + rowH/2 - 8
+    const cx = x(it.lean)
+    g += `<text x="6" y="${y+4}" fill="${it.color}" font-family="Space Mono" font-size="11">${it.label}</text>`
+    g += `<line x1="${L}" y1="${y}" x2="${R}" y2="${y}" stroke="#2E2917" stroke-width="1" stroke-dasharray="2 5"/>`
+    if(it.jitter){
+      g += `<rect x="${x(it.lean-it.jitter)}" y="${y-6}" width="${x(it.lean+it.jitter)-x(it.lean-it.jitter)}" height="12" rx="6" fill="${it.color}" opacity="0.18"/>`
+    }
+    if(Math.abs(it.lean) >= 2){
+      const edge = it.lean > 0 ? cx-8 : cx+8
+      g += `<line x1="${C}" y1="${y}" x2="${edge}" y2="${y}" stroke="${it.color}" stroke-width="3" opacity="0.45"/>`
+    }
+    g += `<circle cx="${cx}" cy="${y}" r="8" fill="${it.color}"/>`
+  })
+  return `<svg viewBox="0 0 700 ${H}" role="img" aria-label="Timing chart: where each voice sits relative to the beat">${g}</svg>`
+}
+
 export function renderGridSVG(p){
   const roles = ROLE_ORDER.filter(r=>p.tracks[r] && p.tracks[r].length);
   const steps = p.grid * p.bars;
