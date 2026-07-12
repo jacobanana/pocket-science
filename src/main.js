@@ -5,7 +5,7 @@ import { togglePlay, stopPlayback, KITS, getKit, setKit, getMetronome, setMetron
 import { FLAGS, setEmphasizeTiming } from './flags.js'
 import { CHAPTERS } from './chapters.js'
 import { GUIDE_HTML } from './guide.js'
-import { initTooltip } from './tooltip.js'
+import { initTooltip, hideNoteTip } from './tooltip.js'
 
 const byId = Object.fromEntries(BANK.patterns.map(p => [p.id, p]))
 const MIDI_BASE = `${import.meta.env.BASE_URL}midi/`
@@ -29,7 +29,7 @@ app.innerHTML = `
     </label>
     <label class="metro"><input type="checkbox" id="metro"${getMetronome()?' checked':''}> metronome</label>
     <label class="metro" title="Exaggerate the timing offsets on the grids ×3 so small leans are easy to see — tooltips keep the true values">
-      <input type="checkbox" id="emph"${FLAGS.emphasizeTiming?' checked':''}> timing ×3</label>
+      <input type="checkbox" id="emph"${FLAGS.emphasizeTiming?' checked':''}> exaggerate timing</label>
   </div>
   <main id="view"></main>
   <p class="footer">How to read the grids: dot size = how hard the hit lands (tiny = ghost note). Arrows point
@@ -59,7 +59,9 @@ function metaLine(p){
   const gridName = p.grid===12?'triplet grid':p.grid===8?'8th grid':'16th grid'
   return `${p.bpm} bpm · ${p.bars} bar${p.bars>1?'s':''} · ${gridName}`
 }
-function patternCard(p){
+/* list = the ordered set of grooves the card sits in (search results,
+   chapter steps) — the fullscreen modal navigates within it */
+function patternCard(p, list){
   const card = document.createElement('div')
   card.className = 'card'
   card.innerHTML = `
@@ -84,31 +86,44 @@ function patternCard(p){
       <a class="midilink" href="${MIDI_BASE}${p.id}.mid" download>⬇ midi</a>
     </div>`
   card.querySelector('.playbtn').addEventListener('click', e => togglePlay(p, e.currentTarget))
-  card.querySelector('.fsbtn').addEventListener('click', () => openDiagramModal(p))
+  card.querySelector('.fsbtn').addEventListener('click', () => openDiagramModal(p, list))
   return card
 }
 
 /* ---------------- full-screen diagram modal */
-function openDiagramModal(p){
-  const cur = { ...p } // local playback copy: bpm/swing tweaks never touch the bank
+function openDiagramModal(p, list){
+  list = (list && list.length) ? list : [p]
+  let idx = Math.max(0, list.findIndex(q => q.id === p.id))
+  let cur = { ...p } // local playback copy: bpm/swing tweaks never touch the bank
+  const swingTitle = q => q.grid===12
+    ? 'On triplet grids, swing pushes the skip note past its natural 2/3 spot'
+    : 'Delay the offbeat subdivisions, MPC-style'
   const ov = document.createElement('div')
   ov.className = 'modal'
   ov.innerHTML = `
     <div class="modalbox">
       <div class="modalhead">
         <div>
-          <p class="tname">${p.name}</p>
-          <p class="tmeta">${metaLine(p)}</p>
+          <p class="tname" id="mtitle">${p.name}</p>
+          <p class="tmeta" id="mmeta">${metaLine(p)}</p>
         </div>
-        <button class="modalclose" aria-label="Close">✕ close</button>
+        <div class="modalnav">
+          <button class="mnav" id="mprev" aria-label="Previous groove">‹</button>
+          <span class="mcount" id="mcount"></span>
+          <button class="mnav" id="mnext" aria-label="Next groove">›</button>
+          <button class="modalclose" aria-label="Close">✕ close</button>
+        </div>
       </div>
       <div class="modalsvg" data-gridfor="${p.id}"></div>
       <div class="transport">
         <button class="playbtn" data-play="${p.id}">► play</button>
         <label>bpm <input type="number" id="mbpm" min="40" max="260" value="${p.bpm}"></label>
-        <label${p.grid===16?'':' title="Swing applies to 16th-grid patterns"'}>swing
-          <input type="range" id="mswing" min="50" max="75" value="${p.swing_16th||50}"${p.grid===16?'':' disabled'}>
+        <label id="mswinglabel" title="${swingTitle(p)}">swing
+          <input type="range" id="mswing" min="50" max="75" value="${p.swing_16th||50}">
           <span id="mswingv">${p.swing_16th||50}%</span></label>
+        <label title="Multiply the groove's micro-timing offsets: 0% plays it dead on the grid, 100% as recorded, up to 300%">timing
+          <input type="range" id="mtime" min="0" max="300" step="5" value="100">
+          <span id="mtimev">100%</span></label>
         <label>kit
           <select id="mkit">${KITS.map(k=>`<option value="${k.id}"${k.id===getKit()?' selected':''}>${k.label}</option>`).join('')}</select>
         </label>
@@ -116,7 +131,78 @@ function openDiagramModal(p){
       </div>
     </div>`
   const playBtn = ov.querySelector('.playbtn')
-  const onKey = e => { if(e.key === 'Escape') close() }
+  const holder = ov.querySelector('.modalsvg')
+  const el = id => ov.querySelector(id)
+
+  // render at the modal's real pixel width so the grid spreads out at 1:1
+  // scale (more horizontal resolution) rather than magnifying the card view
+  const draw = () => { holder.innerHTML = renderGridSVG(cur, { width: holder.clientWidth }) }
+
+  /* ---- navigation between grooves in the list the modal was opened from */
+  function updateNav(){
+    el('#mprev').disabled = idx === 0
+    el('#mnext').disabled = idx === list.length-1
+    el('#mcount').textContent = `${idx+1} / ${list.length}`
+  }
+  function nav(dir){
+    const ni = idx + dir
+    if(ni < 0 || ni >= list.length) return
+    const wasPlaying = playBtn.classList.contains('on')
+    if(wasPlaying) stopPlayback()
+    hideNoteTip()
+    idx = ni
+    cur = { ...list[idx] }
+    el('#mtitle').textContent = cur.name
+    el('#mmeta').textContent = metaLine(cur)
+    holder.dataset.gridfor = cur.id
+    playBtn.dataset.play = cur.id
+    // per-pattern transport resets to the new groove's native values
+    el('#mbpm').value = cur.bpm
+    const sw = cur.swing_16th || 50
+    el('#mswing').value = sw
+    el('#mswingv').textContent = `${sw}%`
+    el('#mswinglabel').title = swingTitle(cur)
+    el('#mtime').value = 100
+    el('#mtimev').textContent = '100%'
+    draw()
+    updateNav()
+    if(wasPlaying) togglePlay(cur, playBtn)
+  }
+  el('#mprev').addEventListener('click', () => nav(-1))
+  el('#mnext').addEventListener('click', () => nav(1))
+  // wheel flips grooves — unless the box actually needs to scroll
+  let wheelAcc = 0, wheelLock = 0
+  ov.addEventListener('wheel', e => {
+    const box = el('.modalbox')
+    if(box.scrollHeight > box.clientHeight + 4) return
+    e.preventDefault()
+    const now = Date.now()
+    if(now < wheelLock) return
+    wheelAcc += e.deltaY
+    if(Math.abs(wheelAcc) >= 60){
+      nav(wheelAcc > 0 ? 1 : -1)
+      wheelAcc = 0
+      wheelLock = now + 350
+    }
+  }, { passive: false })
+  // horizontal swipe on touch — but not when it starts on a control
+  let tx = null, ty = 0
+  ov.addEventListener('touchstart', e => {
+    tx = e.target.closest('input,select,button') ? null : e.touches[0].clientX
+    ty = e.touches[0].clientY
+  }, { passive: true })
+  ov.addEventListener('touchend', e => {
+    if(tx === null) return
+    const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty
+    if(Math.abs(dx) > 48 && Math.abs(dx) > 2*Math.abs(dy)) nav(dx < 0 ? 1 : -1)
+  }, { passive: true })
+
+  const onKey = e => {
+    if(e.key === 'Escape'){ close(); return }
+    if(e.target.closest?.('input,select')) return
+    if(e.key === 'ArrowLeft') nav(-1)
+    if(e.key === 'ArrowRight') nav(1)
+  }
   function close(){
     if(playBtn.classList.contains('on')) stopPlayback()
     ov.remove()
@@ -131,32 +217,39 @@ function openDiagramModal(p){
   // bpm/swing are baked in at schedule time, so changing them mid-play
   // restarts the loop; kit and metronome are read live and need nothing
   const restart = () => { if(playBtn.classList.contains('on')){ togglePlay(cur, playBtn); togglePlay(cur, playBtn) } }
-  ov.querySelector('#mbpm').addEventListener('change', e => {
-    cur.bpm = Math.min(260, Math.max(40, +e.target.value || p.bpm))
+  el('#mbpm').addEventListener('change', e => {
+    cur.bpm = Math.min(260, Math.max(40, +e.target.value || cur.bpm))
     e.target.value = cur.bpm
     restart()
   })
-  ov.querySelector('#mswing').addEventListener('input', e => {
+  // sliders: live readout while dragging, apply + restart on release
+  el('#mswing').addEventListener('input', e => {
+    el('#mswingv').textContent = `${e.target.value}%`
+  })
+  el('#mswing').addEventListener('change', e => {
     const v = +e.target.value
-    ov.querySelector('#mswingv').textContent = `${v}%`
     cur.swing_16th = v > 50 ? v : null
     restart()
   })
-  ov.querySelector('#mkit').addEventListener('change', e => {
+  el('#mtime').addEventListener('input', e => {
+    el('#mtimev').textContent = `${e.target.value}%`
+  })
+  el('#mtime').addEventListener('change', e => {
+    cur.timing_scale = +e.target.value / 100
+    restart()
+  })
+  el('#mkit').addEventListener('change', e => {
     setKit(e.target.value)
     const main = document.getElementById('kitsel'); if(main) main.value = e.target.value
   })
-  ov.querySelector('#mmetro').addEventListener('change', e => {
+  el('#mmetro').addEventListener('change', e => {
     setMetronome(e.target.checked)
     const main = document.getElementById('metro'); if(main) main.checked = e.target.checked
   })
 
   document.body.appendChild(ov)
-  // render at the modal's real pixel width so the grid spreads out at 1:1
-  // scale (more horizontal resolution) rather than magnifying the card view
-  const holder = ov.querySelector('.modalsvg')
-  const draw = () => { holder.innerHTML = renderGridSVG(p, { width: holder.clientWidth }) }
   draw()
+  updateNav()
   window.addEventListener('resize', draw)
 }
 
@@ -193,7 +286,7 @@ function renderAll(){
     countEl.textContent = `${ps.length} pattern${ps.length!==1?'s':''}`
     listEl.innerHTML = ''
     if(!ps.length){ listEl.innerHTML = '<p class="empty">No patterns match.</p>'; return }
-    ps.forEach(p => listEl.appendChild(patternCard(p)))
+    ps.forEach(p => listEl.appendChild(patternCard(p, ps)))
   }
   searchEl.addEventListener('input', render)
   genreEl.addEventListener('change', render)
@@ -233,6 +326,7 @@ function renderChapter(ch){
     <div id="steps"></div>`
   viewEl.querySelector('#back').addEventListener('click', () => { location.hash = '#/chapters' })
   const stepsEl = viewEl.querySelector('#steps')
+  const chPatterns = ch.steps.map(s => byId[s.pattern]).filter(Boolean)
   ch.steps.forEach((s, i) => {
     const p = byId[s.pattern]
     if(!p) return
@@ -246,7 +340,7 @@ function renderChapter(ch){
       <div class="stepbody">
         <p class="stepnote">${s.note}</p>
       </div>`
-    row.querySelector('.stepbody').appendChild(patternCard(p))
+    row.querySelector('.stepbody').appendChild(patternCard(p, chPatterns))
     stepsEl.appendChild(row)
   })
 }

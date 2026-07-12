@@ -8,14 +8,25 @@ function ac(){ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)
    the real time-0 and everything — including the metronome grid — shifts later
    by the same amount, so relative micro-timing survives instead of being
    clamped at the loop boundary. */
+/* swing works on any grid: 8th/16th grids delay the offbeat subdivision
+   (classic MPC swing); triplet grids delay the skip note, deepening the
+   shuffle past its natural 2/3 position */
+function swingDelay(p, step, st){
+  const s = p.swing_16th
+  if(!s || s <= 50) return 0
+  const d = Math.round((s-50)/100*2*st)
+  if(p.grid===12) return step%3===2 ? d : 0
+  return step%2===1 ? d : 0
+}
+
 export function patternEvents(p){
   const st = stepTicks(p.grid)
+  const scale = p.timing_scale ?? 1 // playback-only multiplier on micro-offsets
   const ev = []
   for(const [role, hits] of Object.entries(p.tracks)){
     for(const h of hits){
-      let t = h.step * st
-      if(p.swing_16th && p.grid===16 && h.step%2===1) t += Math.round((p.swing_16th-50)/100*2*st)
-      t += h.off_ticks || 0
+      let t = h.step * st + swingDelay(p, h.step, st)
+      t += Math.round((h.off_ticks || 0) * scale)
       ev.push({ t, role, v: (h.vel||100)/127 })
     }
   }
