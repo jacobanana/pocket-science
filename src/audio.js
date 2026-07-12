@@ -8,6 +8,15 @@ function ac(){ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)
    the real time-0 and everything — including the metronome grid — shifts later
    by the same amount, so relative micro-timing survives instead of being
    clamped at the loop boundary. */
+/* Velocity → amplitude. A linear map makes ghost notes (vel 30–55) far too
+   present: at vel 40 they'd play at ~0.31 gain, a third of a full accent, so
+   the kit sounds stiff (Purdie's law: too-loud ghosts kill the dance). Real
+   drums and MIDI velocity response are non-linear — perceived loudness drops
+   off steeply at low velocity. Squaring the normalized velocity pushes ghosts
+   down to a whisper (vel 40 → 0.10) while accents stay full (vel 120 → 0.89).
+   Playback-only: the exported MIDI keeps true velocities. */
+function velGain(vel){ const n = (vel ?? 100)/127; return n*n }
+
 export function patternEvents(p){
   const st = stepTicks(p.grid)
   const scale = p.timing_scale ?? 1 // playback-only multiplier on micro-offsets
@@ -16,7 +25,7 @@ export function patternEvents(p){
     for(const h of hits){
       let t = h.step * st + swingDelay(p, h.step, st)
       t += Math.round((h.off_ticks || 0) * scale)
-      ev.push({ t, role, v: (h.vel||100)/127 })
+      ev.push({ t, role, v: velGain(h.vel) })
     }
   }
   const minT = Math.min(...ev.map(e => e.t))
