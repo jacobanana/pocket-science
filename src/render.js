@@ -122,8 +122,17 @@ export function renderGridSVG(p){
       const cx = x(h.step) + dispT/st*w;
       const rr = h.vel<=55 ? 3.5 : (h.vel>=118 ? 8.5 : 6.5);
       if(Math.abs(dispT) >= st*0.06){
-        const edge = offT>0 ? cx-rr : cx+rr;
-        g += `<line x1="${x(h.step)}" y1="${y}" x2="${edge}" y2="${y}" stroke="${rc.cval}" stroke-width="3" opacity="0.45"/>`;
+        /* arrow from the true beat to where the hit lands, verdict-chart style:
+           shaft off the grid line, head tucked just under the dot's edge */
+        const dir = dispT>0 ? 1 : -1;
+        const x0 = x(h.step);
+        const tipX = cx - dir*(rr-1.5);
+        const headL = Math.min(5, Math.abs(tipX-x0));
+        const backX = tipX - dir*headL;
+        g += `<path d="M ${tipX} ${y} L ${backX} ${y-3.2} L ${backX} ${y+3.2} Z" fill="${rc.cval}" opacity="0.8"/>`;
+        if(dir*(backX-x0) > 0.5){
+          g += `<line x1="${x0}" y1="${y}" x2="${backX}" y2="${y}" stroke="${rc.cval}" stroke-width="2" opacity="0.8"/>`;
+        }
       }
       if(rc.open){
         g += `<circle cx="${cx}" cy="${y}" r="${rr+1}" fill="none" stroke="${rc.cval}" stroke-width="2.6"/>`;
