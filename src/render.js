@@ -1,3 +1,10 @@
+import { FLAGS } from './flags.js'
+
+/* Timing-emphasis mode: stretch displayed offsets so leans are visible at a
+   glance, capped so a dot never crosses into the neighboring step. The bank's
+   largest real offsets are ~27% of a step, so the cap only bites on those. */
+const EMPH_FACTOR = 3, EMPH_MAX_STEP_FRAC = 0.45
+
 export const ROLE = {
   hat:{label:"HATS",cval:"#9FB3C8"}, openhat:{label:"OPEN",cval:"#C9CDD8",open:true},
   ride:{label:"RIDE",cval:"#B8C9A8"}, crash:{label:"CRASH",cval:"#D8C9A0",open:true},
@@ -109,9 +116,12 @@ export function renderGridSVG(p){
     const tapR = Math.min(11, w/2 - 0.5); // enlarged invisible tap target, capped so neighbors don't overlap
     p.tracks[r].forEach(h=>{
       const offT = h.off_ticks||0;
-      const cx = x(h.step) + offT/st*w;
+      const dispT = FLAGS.emphasizeTiming && offT
+        ? Math.sign(offT) * Math.min(Math.abs(offT)*EMPH_FACTOR, st*EMPH_MAX_STEP_FRAC)
+        : offT;
+      const cx = x(h.step) + dispT/st*w;
       const rr = h.vel<=55 ? 3.5 : (h.vel>=118 ? 8.5 : 6.5);
-      if(Math.abs(offT) >= st*0.06){
+      if(Math.abs(dispT) >= st*0.06){
         const edge = offT>0 ? cx-rr : cx+rr;
         g += `<line x1="${x(h.step)}" y1="${y}" x2="${edge}" y2="${y}" stroke="${rc.cval}" stroke-width="3" opacity="0.45"/>`;
       }
@@ -123,5 +133,8 @@ export function renderGridSVG(p){
       g += `<circle class="hit" cx="${cx}" cy="${y}" r="${Math.max(rr+2, tapR)}" fill="transparent" data-tip="${hitTip(p, r, h, st)}"/>`;
     });
   });
-  return `<svg viewBox="0 0 700 ${H}" role="img" aria-label="Step grid for ${p.name}">${g}</svg>`;
+  if(FLAGS.emphasizeTiming){
+    g += `<text x="${R}" y="12" fill="#E9B33B" font-family="Space Mono" font-size="10" text-anchor="end">TIMING ×${EMPH_FACTOR}</text>`;
+  }
+  return `<svg viewBox="0 0 700 ${H}" role="img" aria-label="Step grid for ${p.name}${FLAGS.emphasizeTiming?' (timing offsets visually exaggerated)':''}">${g}</svg>`;
 }
