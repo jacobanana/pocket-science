@@ -29,7 +29,7 @@ app.innerHTML = `
     </label>
     <label class="metro"><input type="checkbox" id="metro"${getMetronome()?' checked':''}> metronome</label>
     <label class="metro" title="Exaggerate the timing offsets on the grids ×3 so small leans are easy to see — tooltips keep the true values">
-      <input type="checkbox" id="emph"${FLAGS.emphasizeTiming?' checked':''}> timing ×3</label>
+      <input type="checkbox" id="emph"${FLAGS.emphasizeTiming?' checked':''}> exaggerate timing</label>
   </div>
   <main id="view"></main>
   <p class="footer">How to read the grids: dot size = how hard the hit lands (tiny = ghost note). Arrows point
@@ -106,9 +106,12 @@ function openDiagramModal(p){
       <div class="transport">
         <button class="playbtn" data-play="${p.id}">► play</button>
         <label>bpm <input type="number" id="mbpm" min="40" max="260" value="${p.bpm}"></label>
-        <label${p.grid===16?'':' title="Swing applies to 16th-grid patterns"'}>swing
-          <input type="range" id="mswing" min="50" max="75" value="${p.swing_16th||50}"${p.grid===16?'':' disabled'}>
+        <label title="${p.grid===12?'On triplet grids, swing pushes the skip note past its natural 2/3 spot':'Delay the offbeat subdivisions, MPC-style'}">swing
+          <input type="range" id="mswing" min="50" max="75" value="${p.swing_16th||50}">
           <span id="mswingv">${p.swing_16th||50}%</span></label>
+        <label title="Multiply the groove's micro-timing offsets: 0% plays it dead on the grid, 100% as recorded, up to 300%">timing
+          <input type="range" id="mtime" min="0" max="300" step="5" value="100">
+          <span id="mtimev">100%</span></label>
         <label>kit
           <select id="mkit">${KITS.map(k=>`<option value="${k.id}"${k.id===getKit()?' selected':''}>${k.label}</option>`).join('')}</select>
         </label>
@@ -136,10 +139,20 @@ function openDiagramModal(p){
     e.target.value = cur.bpm
     restart()
   })
+  // sliders: live readout while dragging, apply + restart on release
   ov.querySelector('#mswing').addEventListener('input', e => {
+    ov.querySelector('#mswingv').textContent = `${e.target.value}%`
+  })
+  ov.querySelector('#mswing').addEventListener('change', e => {
     const v = +e.target.value
-    ov.querySelector('#mswingv').textContent = `${v}%`
     cur.swing_16th = v > 50 ? v : null
+    restart()
+  })
+  ov.querySelector('#mtime').addEventListener('input', e => {
+    ov.querySelector('#mtimev').textContent = `${e.target.value}%`
+  })
+  ov.querySelector('#mtime').addEventListener('change', e => {
+    cur.timing_scale = +e.target.value / 100
     restart()
   })
   ov.querySelector('#mkit').addEventListener('change', e => {
