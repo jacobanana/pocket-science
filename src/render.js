@@ -19,6 +19,18 @@ export const ROLE_ORDER = ["openhat","hat","ride","crash","shaker","tamb","cowbe
 
 export function stepTicks(grid){ return grid===12?160 : grid===8?240 : 120; }
 
+/* swing works on any grid: 8th/16th grids delay the offbeat subdivision
+   (classic MPC swing); triplet grids delay the skip note, deepening the
+   shuffle past its natural 2/3 position. Shared by playback (audio.js)
+   and the modal's grid view so what you see is what you hear. */
+export function swingDelay(p, step, st){
+  const s = p.swing_16th
+  if(!s || s <= 50) return 0
+  const d = Math.round((s-50)/100*2*st)
+  if(p.grid===12) return step%3===2 ? d : 0
+  return step%2===1 ? d : 0
+}
+
 function velKind(v){ return v<=25?'feathered' : v<=55?'ghost' : v>=112?'accent' : 'normal' }
 
 /* nearest note-value fraction for a tick offset (whole note = 1920 ticks),
@@ -33,17 +45,20 @@ function offFraction(t){
 }
 
 function hitTip(p, role, h, st){
-  const offT = h.off_ticks || 0
+  const scale = p.timing_scale ?? 1
+  const offT = Math.round((h.off_ticks || 0) * scale)
   const lines = [`${ROLE[role].label} · vel ${h.vel} (${velKind(h.vel)})`]
   if(offT === 0){
-    lines.push('dead on the beat')
+    lines.push(scale !== 1 && h.off_ticks ? 'quantized to the grid' : 'dead on the beat')
   } else {
-    const frac = (h.off_approx && h.off_approx !== '0') ? h.off_approx.replace('-','−') : offFraction(offT)
-    const ms = h.off_ms_at_native_bpm ?? Math.round(offT*60000/(p.bpm*480))
+    // the precomputed fraction/ms strings only describe the recorded offset
+    const asRecorded = scale === 1
+    const frac = (asRecorded && h.off_approx && h.off_approx !== '0') ? h.off_approx.replace('-','−') : offFraction(offT)
+    const ms = asRecorded && h.off_ms_at_native_bpm != null ? h.off_ms_at_native_bpm : Math.round(offT*60000/(p.bpm*480))
     lines.push(`${frac} ${offT>0?'behind':'ahead of'} the beat (${ms>0?'+':'−'}${Math.abs(ms)} ms)`)
   }
-  if(p.swing_16th && p.grid===16 && h.step%2===1){
-    lines.push(`plus ${p.swing_16th}% swing on this 16th`)
+  if(swingDelay(p, h.step, st)){
+    lines.push(`plus ${p.swing_16th}% swing on this step`)
   }
   return lines.join('\n')
 }
@@ -91,9 +106,13 @@ export function renderVerdictSVG(v){
 
 /* opts.width sets the viewBox width (default 700, the card size). The modal
    passes its real pixel width so the grid gains horizontal resolution —
-   wider step spacing at 1:1 scale — instead of magnifying the card view. */
+   wider step spacing at 1:1 scale — instead of magnifying the card view.
+   opts.showSwing shifts the dots by the pattern's swing so the picture
+   matches playback; p.timing_scale (the modal's timing slider) scales the
+   displayed micro-offsets the same way it scales the audible ones. */
 export function renderGridSVG(p, opts={}){
   const W = Math.max(700, opts.width || 700);
+  const scale = p.timing_scale ?? 1;
   const roles = ROLE_ORDER.filter(r=>p.tracks[r] && p.tracks[r].length);
   const steps = p.grid * p.bars;
   const rowH = 34, top = 26, L = 74, R = W-10;
@@ -119,7 +138,7 @@ export function renderGridSVG(p, opts={}){
     g += `<line x1="${L}" y1="${y}" x2="${R}" y2="${y}" stroke="#2E2917" stroke-width="1" stroke-dasharray="2 5"/>`;
     const tapR = Math.min(11, w/2 - 0.5); // enlarged invisible tap target, capped so neighbors don't overlap
     p.tracks[r].forEach(h=>{
-      const offT = h.off_ticks||0;
+      const offT = Math.round((h.off_ticks||0)*scale) + (opts.showSwing ? swingDelay(p, h.step, st) : 0);
       const dispT = FLAGS.emphasizeTiming && offT
         ? Math.sign(offT) * Math.min(Math.abs(offT)*EMPH_FACTOR, st*EMPH_MAX_STEP_FRAC)
         : offT;
