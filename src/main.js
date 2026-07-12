@@ -88,14 +88,24 @@ function openDiagramModal(p){
         </div>
         <button class="modalclose" aria-label="Close">✕ close</button>
       </div>
-      ${renderGridSVG(p)}
+      <div class="modalsvg"></div>
     </div>`
   const onKey = e => { if(e.key === 'Escape') close() }
-  function close(){ ov.remove(); document.removeEventListener('keydown', onKey) }
+  function close(){
+    ov.remove()
+    document.removeEventListener('keydown', onKey)
+    window.removeEventListener('resize', draw)
+  }
   ov.addEventListener('click', e => { if(e.target === ov) close() })
   ov.querySelector('.modalclose').addEventListener('click', close)
   document.addEventListener('keydown', onKey)
   document.body.appendChild(ov)
+  // render at the modal's real pixel width so the grid spreads out at 1:1
+  // scale (more horizontal resolution) rather than magnifying the card view
+  const holder = ov.querySelector('.modalsvg')
+  const draw = () => { holder.innerHTML = renderGridSVG(p, { width: holder.clientWidth }) }
+  draw()
+  window.addEventListener('resize', draw)
 }
 
 /* ---------------- view: all grooves */

@@ -89,10 +89,14 @@ export function renderVerdictSVG(v){
   return `<svg viewBox="0 0 700 ${H}" role="img" aria-label="Timing chart: where each voice sits relative to the beat">${g}</svg>`
 }
 
-export function renderGridSVG(p){
+/* opts.width sets the viewBox width (default 700, the card size). The modal
+   passes its real pixel width so the grid gains horizontal resolution —
+   wider step spacing at 1:1 scale — instead of magnifying the card view. */
+export function renderGridSVG(p, opts={}){
+  const W = Math.max(700, opts.width || 700);
   const roles = ROLE_ORDER.filter(r=>p.tracks[r] && p.tracks[r].length);
   const steps = p.grid * p.bars;
-  const rowH = 34, top = 26, L = 74, R = 690;
+  const rowH = 34, top = 26, L = 74, R = W-10;
   const H = top + roles.length*rowH + 34;
   const w = (R-L)/steps, x = i=>L+i*w;
   const st = stepTicks(p.grid);
@@ -145,5 +149,5 @@ export function renderGridSVG(p){
   if(FLAGS.emphasizeTiming){
     g += `<text x="${R}" y="12" fill="#E9B33B" font-family="Space Mono" font-size="10" text-anchor="end">TIMING ×${EMPH_FACTOR}</text>`;
   }
-  return `<svg viewBox="0 0 700 ${H}" role="img" aria-label="Step grid for ${p.name}${FLAGS.emphasizeTiming?' (timing offsets visually exaggerated)':''}">${g}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Step grid for ${p.name}${FLAGS.emphasizeTiming?' (timing offsets visually exaggerated)':''}">${g}</svg>`;
 }
