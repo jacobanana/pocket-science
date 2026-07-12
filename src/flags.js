@@ -1,10 +1,14 @@
-/* Feature flags. Flip the defaults here, or override for one session with a
-   URL query param — e.g. ?emphasize-timing=1 (or =0) — no rebuild needed. */
+/* Feature flags. The "timing ×3" soundbar toggle drives emphasizeTiming at
+   runtime (persisted to localStorage); a URL query param overrides it for one
+   session — e.g. ?emphasize-timing=1 (or =0). */
 const params = new URLSearchParams(location.search)
+const store = typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {} }
 
-function flag(name, fallback){
-  const v = params.get(name)
-  return v === null ? fallback : v !== '0' && v !== 'false'
+function readFlag(param, key, fallback){
+  const v = params.get(param)
+  if(v !== null) return v !== '0' && v !== 'false'
+  const s = store.getItem(key)
+  return s === null ? fallback : s === '1'
 }
 
 export const FLAGS = {
@@ -12,5 +16,10 @@ export const FLAGS = {
      easy to spot: dot displacement is stretched ×3, capped inside the step.
      Positions become qualitative; tooltips always report the true values.
      Emphasized grids carry a "TIMING ×3" badge. */
-  emphasizeTiming: flag('emphasize-timing', false),
+  emphasizeTiming: readFlag('emphasize-timing', 'ps-emph', false),
+}
+
+export function setEmphasizeTiming(on){
+  FLAGS.emphasizeTiming = !!on
+  store.setItem('ps-emph', on ? '1' : '0')
 }
