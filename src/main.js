@@ -46,12 +46,16 @@ document.getElementById('metro').addEventListener('change', e => setMetronome(e.
 document.getElementById('emph').addEventListener('change', e => { setEmphasizeTiming(e.target.checked); redrawGrids() })
 
 /* re-render every step grid in place (cards + open modal) after a display
-   flag changes — playback, search state and scroll position all survive */
+   flag changes — playback, search state and scroll position all survive.
+   The modal redraws itself so its transport tweaks (swing/timing) stay in. */
+let modalRedraw = null
 function redrawGrids(){
   document.querySelectorAll('[data-gridfor]').forEach(el => {
+    if(el.classList.contains('modalsvg')) return
     const p = byId[el.dataset.gridfor]
-    if(p) el.innerHTML = renderGridSVG(p, el.classList.contains('modalsvg') ? { width: el.clientWidth } : {})
+    if(p) el.innerHTML = renderGridSVG(p)
   })
+  if(modalRedraw) modalRedraw()
 }
 
 /* ---------------- pattern card */
@@ -135,8 +139,9 @@ function openDiagramModal(p, list){
   const el = id => ov.querySelector(id)
 
   // render at the modal's real pixel width so the grid spreads out at 1:1
-  // scale (more horizontal resolution) rather than magnifying the card view
-  const draw = () => { holder.innerHTML = renderGridSVG(cur, { width: holder.clientWidth }) }
+  // scale (more horizontal resolution) rather than magnifying the card view;
+  // showSwing + cur's timing_scale keep the picture in step with playback
+  const draw = () => { holder.innerHTML = renderGridSVG(cur, { width: holder.clientWidth, showSwing: true }) }
 
   /* ---- navigation between grooves in the list the modal was opened from */
   function updateNav(){
@@ -206,6 +211,7 @@ function openDiagramModal(p, list){
   function close(){
     if(playBtn.classList.contains('on')) stopPlayback()
     ov.remove()
+    modalRedraw = null
     document.removeEventListener('keydown', onKey)
     window.removeEventListener('resize', draw)
   }
@@ -220,24 +226,23 @@ function openDiagramModal(p, list){
   el('#mbpm').addEventListener('change', e => {
     cur.bpm = Math.min(260, Math.max(40, +e.target.value || cur.bpm))
     e.target.value = cur.bpm
+    draw() // tooltip ms values follow the tempo
     restart()
   })
-  // sliders: live readout while dragging, apply + restart on release
+  // sliders: readout + diagram track the drag live, audio restarts on release
   el('#mswing').addEventListener('input', e => {
-    el('#mswingv').textContent = `${e.target.value}%`
-  })
-  el('#mswing').addEventListener('change', e => {
     const v = +e.target.value
+    el('#mswingv').textContent = `${v}%`
     cur.swing_16th = v > 50 ? v : null
-    restart()
+    draw()
   })
+  el('#mswing').addEventListener('change', () => restart())
   el('#mtime').addEventListener('input', e => {
     el('#mtimev').textContent = `${e.target.value}%`
-  })
-  el('#mtime').addEventListener('change', e => {
     cur.timing_scale = +e.target.value / 100
-    restart()
+    draw()
   })
+  el('#mtime').addEventListener('change', () => restart())
   el('#mkit').addEventListener('change', e => {
     setKit(e.target.value)
     const main = document.getElementById('kitsel'); if(main) main.value = e.target.value
@@ -250,6 +255,7 @@ function openDiagramModal(p, list){
   document.body.appendChild(ov)
   draw()
   updateNav()
+  modalRedraw = draw
   window.addEventListener('resize', draw)
 }
 

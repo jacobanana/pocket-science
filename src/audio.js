@@ -1,4 +1,4 @@
-import { stepTicks } from './render.js'
+import { stepTicks, swingDelay } from './render.js'
 
 let AC = null
 function ac(){ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)(); return AC }
@@ -8,17 +8,6 @@ function ac(){ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)
    the real time-0 and everything — including the metronome grid — shifts later
    by the same amount, so relative micro-timing survives instead of being
    clamped at the loop boundary. */
-/* swing works on any grid: 8th/16th grids delay the offbeat subdivision
-   (classic MPC swing); triplet grids delay the skip note, deepening the
-   shuffle past its natural 2/3 position */
-function swingDelay(p, step, st){
-  const s = p.swing_16th
-  if(!s || s <= 50) return 0
-  const d = Math.round((s-50)/100*2*st)
-  if(p.grid===12) return step%3===2 ? d : 0
-  return step%2===1 ? d : 0
-}
-
 export function patternEvents(p){
   const st = stepTicks(p.grid)
   const scale = p.timing_scale ?? 1 // playback-only multiplier on micro-offsets
