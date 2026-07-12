@@ -2,6 +2,7 @@ import './style.css'
 import BANK from './data/patterns.json'
 import { renderGridSVG, renderVerdictSVG } from './render.js'
 import { togglePlay, stopPlayback, KITS, getKit, setKit, getMetronome, setMetronome } from './audio.js'
+import { FLAGS, setEmphasizeTiming } from './flags.js'
 import { CHAPTERS } from './chapters.js'
 import { GUIDE_HTML } from './guide.js'
 import { initTooltip } from './tooltip.js'
@@ -27,6 +28,8 @@ app.innerHTML = `
       <select id="kitsel">${KITS.map(k=>`<option value="${k.id}"${k.id===getKit()?' selected':''}>${k.label}</option>`).join('')}</select>
     </label>
     <label class="metro"><input type="checkbox" id="metro"${getMetronome()?' checked':''}> metronome</label>
+    <label class="metro" title="Exaggerate the timing offsets on the grids ×3 so small leans are easy to see — tooltips keep the true values">
+      <input type="checkbox" id="emph"${FLAGS.emphasizeTiming?' checked':''}> timing ×3</label>
   </div>
   <main id="view"></main>
   <p class="footer">How to read the grids: dot size = how hard the hit lands (tiny = ghost note). Arrows point
@@ -40,6 +43,16 @@ const viewEl = document.getElementById('view')
 const tabsEl = document.getElementById('tabs')
 document.getElementById('kitsel').addEventListener('change', e => setKit(e.target.value))
 document.getElementById('metro').addEventListener('change', e => setMetronome(e.target.checked))
+document.getElementById('emph').addEventListener('change', e => { setEmphasizeTiming(e.target.checked); redrawGrids() })
+
+/* re-render every step grid in place (cards + open modal) after a display
+   flag changes — playback, search state and scroll position all survive */
+function redrawGrids(){
+  document.querySelectorAll('[data-gridfor]').forEach(el => {
+    const p = byId[el.dataset.gridfor]
+    if(p) el.innerHTML = renderGridSVG(p, el.classList.contains('modalsvg') ? { width: el.clientWidth } : {})
+  })
+}
 
 /* ---------------- pattern card */
 function metaLine(p){
@@ -65,7 +78,7 @@ function patternCard(p){
         <button class="playbtn" data-play="${p.id}">► play</button>
       </div>
     </div>
-    ${renderGridSVG(p)}
+    <div data-gridfor="${p.id}">${renderGridSVG(p)}</div>
     <div class="cardfoot">
       <p class="feel">${p.feel||''}</p>
       <a class="midilink" href="${MIDI_BASE}${p.id}.mid" download>⬇ midi</a>
@@ -77,6 +90,7 @@ function patternCard(p){
 
 /* ---------------- full-screen diagram modal */
 function openDiagramModal(p){
+  const cur = { ...p } // local playback copy: bpm/swing tweaks never touch the bank
   const ov = document.createElement('div')
   ov.className = 'modal'
   ov.innerHTML = `
@@ -88,10 +102,23 @@ function openDiagramModal(p){
         </div>
         <button class="modalclose" aria-label="Close">✕ close</button>
       </div>
-      <div class="modalsvg"></div>
+      <div class="modalsvg" data-gridfor="${p.id}"></div>
+      <div class="transport">
+        <button class="playbtn" data-play="${p.id}">► play</button>
+        <label>bpm <input type="number" id="mbpm" min="40" max="260" value="${p.bpm}"></label>
+        <label${p.grid===16?'':' title="Swing applies to 16th-grid patterns"'}>swing
+          <input type="range" id="mswing" min="50" max="75" value="${p.swing_16th||50}"${p.grid===16?'':' disabled'}>
+          <span id="mswingv">${p.swing_16th||50}%</span></label>
+        <label>kit
+          <select id="mkit">${KITS.map(k=>`<option value="${k.id}"${k.id===getKit()?' selected':''}>${k.label}</option>`).join('')}</select>
+        </label>
+        <label class="metro"><input type="checkbox" id="mmetro"${getMetronome()?' checked':''}> metronome</label>
+      </div>
     </div>`
+  const playBtn = ov.querySelector('.playbtn')
   const onKey = e => { if(e.key === 'Escape') close() }
   function close(){
+    if(playBtn.classList.contains('on')) stopPlayback()
     ov.remove()
     document.removeEventListener('keydown', onKey)
     window.removeEventListener('resize', draw)
@@ -99,6 +126,31 @@ function openDiagramModal(p){
   ov.addEventListener('click', e => { if(e.target === ov) close() })
   ov.querySelector('.modalclose').addEventListener('click', close)
   document.addEventListener('keydown', onKey)
+
+  playBtn.addEventListener('click', () => togglePlay(cur, playBtn))
+  // bpm/swing are baked in at schedule time, so changing them mid-play
+  // restarts the loop; kit and metronome are read live and need nothing
+  const restart = () => { if(playBtn.classList.contains('on')){ togglePlay(cur, playBtn); togglePlay(cur, playBtn) } }
+  ov.querySelector('#mbpm').addEventListener('change', e => {
+    cur.bpm = Math.min(260, Math.max(40, +e.target.value || p.bpm))
+    e.target.value = cur.bpm
+    restart()
+  })
+  ov.querySelector('#mswing').addEventListener('input', e => {
+    const v = +e.target.value
+    ov.querySelector('#mswingv').textContent = `${v}%`
+    cur.swing_16th = v > 50 ? v : null
+    restart()
+  })
+  ov.querySelector('#mkit').addEventListener('change', e => {
+    setKit(e.target.value)
+    const main = document.getElementById('kitsel'); if(main) main.value = e.target.value
+  })
+  ov.querySelector('#mmetro').addEventListener('change', e => {
+    setMetronome(e.target.checked)
+    const main = document.getElementById('metro'); if(main) main.checked = e.target.checked
+  })
+
   document.body.appendChild(ov)
   // render at the modal's real pixel width so the grid spreads out at 1:1
   // scale (more horizontal resolution) rather than magnifying the card view
