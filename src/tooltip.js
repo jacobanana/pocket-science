@@ -1,5 +1,8 @@
 /* Note tooltip: hover on desktop, tap on mobile. Reads the data-tip text
    baked into each .hit target by renderGridSVG. */
+let hideFn = () => {}
+export function hideNoteTip(){ hideFn() }
+
 export function initTooltip(){
   const tip = document.createElement('div')
   tip.className = 'notetip'
@@ -31,6 +34,7 @@ export function initTooltip(){
     tip.style.visibility = ''
   }
   function hide(){ tip.hidden = true; pinned = null }
+  hideFn = hide
 
   // desktop hover
   document.addEventListener('pointerover', e => {
