@@ -29,8 +29,8 @@ app.innerHTML = `
     <label class="metro"><input type="checkbox" id="metro"${getMetronome()?' checked':''}> metronome</label>
   </div>
   <main id="view"></main>
-  <p class="footer">How to read the grids: dot size = how hard the hit lands (tiny = ghost note). Tails show
-  the lean — left of the line is ahead of the beat, right is behind. Hollow circles are open hats. The swing
+  <p class="footer">How to read the grids: dot size = how hard the hit lands (tiny = ghost note). Arrows point
+  from the true beat to where the hit actually lands — left of the line is ahead of the beat, right is behind. Hollow circles are open hats. The swing
   badge is the MPC-style 16th swing to dial in on hardware. The metronome clicks the true beat, so hits that
   lean ahead of the one will sound just before the click — that's the lean, not a mistake. Every groove is
   downloadable as MIDI for your DAW or drum machine.</p>
@@ -60,7 +60,10 @@ function patternCard(p){
           ${p.swing_16th?`<span class="chip sw">swing ${p.swing_16th}%</span>`:''}
         </p>
       </div>
-      <button class="playbtn" data-play="${p.id}">► play</button>
+      <div class="cardbtns">
+        <button class="fsbtn" title="View diagram full screen" aria-label="View diagram full screen">⛶</button>
+        <button class="playbtn" data-play="${p.id}">► play</button>
+      </div>
     </div>
     ${renderGridSVG(p)}
     <div class="cardfoot">
@@ -68,7 +71,41 @@ function patternCard(p){
       <a class="midilink" href="${MIDI_BASE}${p.id}.mid" download>⬇ midi</a>
     </div>`
   card.querySelector('.playbtn').addEventListener('click', e => togglePlay(p, e.currentTarget))
+  card.querySelector('.fsbtn').addEventListener('click', () => openDiagramModal(p))
   return card
+}
+
+/* ---------------- full-screen diagram modal */
+function openDiagramModal(p){
+  const ov = document.createElement('div')
+  ov.className = 'modal'
+  ov.innerHTML = `
+    <div class="modalbox">
+      <div class="modalhead">
+        <div>
+          <p class="tname">${p.name}</p>
+          <p class="tmeta">${metaLine(p)}</p>
+        </div>
+        <button class="modalclose" aria-label="Close">✕ close</button>
+      </div>
+      <div class="modalsvg"></div>
+    </div>`
+  const onKey = e => { if(e.key === 'Escape') close() }
+  function close(){
+    ov.remove()
+    document.removeEventListener('keydown', onKey)
+    window.removeEventListener('resize', draw)
+  }
+  ov.addEventListener('click', e => { if(e.target === ov) close() })
+  ov.querySelector('.modalclose').addEventListener('click', close)
+  document.addEventListener('keydown', onKey)
+  document.body.appendChild(ov)
+  // render at the modal's real pixel width so the grid spreads out at 1:1
+  // scale (more horizontal resolution) rather than magnifying the card view
+  const holder = ov.querySelector('.modalsvg')
+  const draw = () => { holder.innerHTML = renderGridSVG(p, { width: holder.clientWidth }) }
+  draw()
+  window.addEventListener('resize', draw)
 }
 
 /* ---------------- view: all grooves */
@@ -170,6 +207,7 @@ function renderGuide(){
 /* ---------------- hash router */
 function route(){
   stopPlayback()
+  document.querySelectorAll('.modal').forEach(m => m.remove())
   const hash = location.hash || '#/chapters'
   const m = hash.match(/^#\/(chapters|paths|all|guide)(?:\/([\w-]+))?/)
   const view = m ? (m[1]==='paths' ? 'chapters' : m[1]) : 'chapters'

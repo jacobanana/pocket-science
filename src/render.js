@@ -89,10 +89,14 @@ export function renderVerdictSVG(v){
   return `<svg viewBox="0 0 700 ${H}" role="img" aria-label="Timing chart: where each voice sits relative to the beat">${g}</svg>`
 }
 
-export function renderGridSVG(p){
+/* opts.width sets the viewBox width (default 700, the card size). The modal
+   passes its real pixel width so the grid gains horizontal resolution —
+   wider step spacing at 1:1 scale — instead of magnifying the card view. */
+export function renderGridSVG(p, opts={}){
+  const W = Math.max(700, opts.width || 700);
   const roles = ROLE_ORDER.filter(r=>p.tracks[r] && p.tracks[r].length);
   const steps = p.grid * p.bars;
-  const rowH = 34, top = 26, L = 74, R = 690;
+  const rowH = 34, top = 26, L = 74, R = W-10;
   const H = top + roles.length*rowH + 34;
   const w = (R-L)/steps, x = i=>L+i*w;
   const st = stepTicks(p.grid);
@@ -122,8 +126,17 @@ export function renderGridSVG(p){
       const cx = x(h.step) + dispT/st*w;
       const rr = h.vel<=55 ? 3.5 : (h.vel>=118 ? 8.5 : 6.5);
       if(Math.abs(dispT) >= st*0.06){
-        const edge = offT>0 ? cx-rr : cx+rr;
-        g += `<line x1="${x(h.step)}" y1="${y}" x2="${edge}" y2="${y}" stroke="${rc.cval}" stroke-width="3" opacity="0.45"/>`;
+        /* arrow from the true beat to where the hit lands, verdict-chart style:
+           shaft off the grid line, head tucked just under the dot's edge */
+        const dir = dispT>0 ? 1 : -1;
+        const x0 = x(h.step);
+        const tipX = cx - dir*(rr-1.5);
+        const headL = Math.min(5, Math.abs(tipX-x0));
+        const backX = tipX - dir*headL;
+        g += `<path d="M ${tipX} ${y} L ${backX} ${y-3.2} L ${backX} ${y+3.2} Z" fill="${rc.cval}" opacity="0.8"/>`;
+        if(dir*(backX-x0) > 0.5){
+          g += `<line x1="${x0}" y1="${y}" x2="${backX}" y2="${y}" stroke="${rc.cval}" stroke-width="2" opacity="0.8"/>`;
+        }
       }
       if(rc.open){
         g += `<circle cx="${cx}" cy="${y}" r="${rr+1}" fill="none" stroke="${rc.cval}" stroke-width="2.6"/>`;
@@ -136,5 +149,5 @@ export function renderGridSVG(p){
   if(FLAGS.emphasizeTiming){
     g += `<text x="${R}" y="12" fill="#E9B33B" font-family="Space Mono" font-size="10" text-anchor="end">TIMING ×${EMPH_FACTOR}</text>`;
   }
-  return `<svg viewBox="0 0 700 ${H}" role="img" aria-label="Step grid for ${p.name}${FLAGS.emphasizeTiming?' (timing offsets visually exaggerated)':''}">${g}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Step grid for ${p.name}${FLAGS.emphasizeTiming?' (timing offsets visually exaggerated)':''}">${g}</svg>`;
 }
