@@ -2,7 +2,7 @@ import './style.css'
 import BANK from './data/patterns.json'
 import { renderGridSVG, renderVerdictSVG } from './render.js'
 import { togglePlay, stopPlayback, KITS, getKit, setKit, getMetronome, setMetronome } from './audio.js'
-import { FLAGS, setEmphasizeTiming } from './flags.js'
+import { FLAGS, setEmphasizePocket } from './flags.js'
 import { CHAPTERS } from './chapters.js'
 import { GUIDE_HTML } from './guide.js'
 import { initTooltip, hideNoteTip } from './tooltip.js'
@@ -28,8 +28,8 @@ app.innerHTML = `
       <select id="kitsel">${KITS.map(k=>`<option value="${k.id}"${k.id===getKit()?' selected':''}>${k.label}</option>`).join('')}</select>
     </label>
     <label class="metro"><input type="checkbox" id="metro"${getMetronome()?' checked':''}> metronome</label>
-    <label class="metro" title="Exaggerate the timing offsets on the grids ×3 so small leans are easy to see — tooltips keep the true values">
-      <input type="checkbox" id="emph"${FLAGS.emphasizeTiming?' checked':''}> exaggerate timing</label>
+    <label class="metro" title="Exaggerate the pocket offsets on the grids ×3 so small leans are easy to see — tooltips keep the true values">
+      <input type="checkbox" id="emph"${FLAGS.emphasizePocket?' checked':''}> exaggerate pocket</label>
   </div>
   <main id="view"></main>
   <p class="footer">How to read the grids: dot size = how hard the hit lands (tiny = ghost note). Arrows point
@@ -43,11 +43,11 @@ const viewEl = document.getElementById('view')
 const tabsEl = document.getElementById('tabs')
 document.getElementById('kitsel').addEventListener('change', e => setKit(e.target.value))
 document.getElementById('metro').addEventListener('change', e => setMetronome(e.target.checked))
-document.getElementById('emph').addEventListener('change', e => { setEmphasizeTiming(e.target.checked); redrawGrids() })
+document.getElementById('emph').addEventListener('change', e => { setEmphasizePocket(e.target.checked); redrawGrids() })
 
 /* re-render every step grid in place (cards + open modal) after a display
    flag changes — playback, search state and scroll position all survive.
-   The modal redraws itself so its transport tweaks (swing/timing) stay in. */
+   The modal redraws itself so its transport tweaks (swing/pocket) stay in. */
 let modalRedraw = null
 function redrawGrids(){
   document.querySelectorAll('[data-gridfor]').forEach(el => {
@@ -125,7 +125,7 @@ function openDiagramModal(p, list){
         <label id="mswinglabel" title="${swingTitle(p)}">swing
           <input type="range" id="mswing" min="50" max="75" value="${p.swing_16th||50}">
           <span id="mswingv">${p.swing_16th||50}%</span></label>
-        <label title="Multiply the groove's micro-timing offsets: 0% plays it dead on the grid, 100% as recorded, up to 300%">timing
+        <label title="Multiply the groove's micro-timing offsets: 0% plays it dead on the grid, 100% as recorded, up to 300%">pocket
           <input type="range" id="mtime" min="0" max="300" step="5" value="100">
           <span id="mtimev">100%</span></label>
         <label>kit
@@ -140,7 +140,7 @@ function openDiagramModal(p, list){
 
   // render at the modal's real pixel width so the grid spreads out at 1:1
   // scale (more horizontal resolution) rather than magnifying the card view;
-  // showSwing + cur's timing_scale keep the picture in step with playback
+  // showSwing + cur's pocket_scale keep the picture in step with playback
   const draw = () => { holder.innerHTML = renderGridSVG(cur, { width: holder.clientWidth, showSwing: true }) }
 
   /* ---- navigation between grooves in the list the modal was opened from */
@@ -239,7 +239,7 @@ function openDiagramModal(p, list){
   el('#mswing').addEventListener('change', () => restart())
   el('#mtime').addEventListener('input', e => {
     el('#mtimev').textContent = `${e.target.value}%`
-    cur.timing_scale = +e.target.value / 100
+    cur.pocket_scale = +e.target.value / 100
     draw()
   })
   el('#mtime').addEventListener('change', () => restart())
@@ -304,7 +304,7 @@ function renderAll(){
 function renderChapterIndex(){
   viewEl.innerHTML = `
     <p class="lede" style="margin-bottom:16px">Grooves don't appear from nowhere — each one answers the one before it.
-    Every chapter opens with its timing verdict — where each voice sits against the beat — then walks the lineage
+    Every chapter opens with its pocket verdict — where each voice sits against the beat — then walks the lineage
     groove by groove, with notes on exactly what changes at each step.</p>
     <div class="pathgrid">${CHAPTERS.map(ch=>`
       <button class="pathcard" data-chapter="${ch.id}">

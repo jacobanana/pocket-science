@@ -1,6 +1,6 @@
 // The chapters of the atlas. Chapter = curated path: an ordered walk through
 // the grooves of one lineage, each step annotated with what changes.
-// Every chapter opens with a `verdict` — the overall timing chart plotting
+// Every chapter opens with a `verdict` — the overall pocket chart plotting
 // where each voice of that lineage sits relative to the beat (lean in ticks
 // @ PPQ 480; `jitter` marks feels that scatter both ways around their lean).
 export const CHAPTERS = [

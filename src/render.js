@@ -1,6 +1,6 @@
 import { FLAGS } from './flags.js'
 
-/* Timing-emphasis mode: stretch displayed offsets so leans are visible at a
+/* Pocket-emphasis mode: stretch displayed offsets so leans are visible at a
    glance, capped so a dot never crosses into the neighboring step. The bank's
    largest real offsets are ~27% of a step, so the cap only bites on those. */
 const EMPH_FACTOR = 3, EMPH_MAX_STEP_FRAC = 0.45
@@ -45,7 +45,7 @@ function offFraction(t){
 }
 
 function hitTip(p, role, h, st){
-  const scale = p.timing_scale ?? 1
+  const scale = p.pocket_scale ?? 1
   const offT = Math.round((h.off_ticks || 0) * scale)
   const lines = [`${ROLE[role].label} · vel ${h.vel} (${velKind(h.vel)})`]
   if(offT === 0){
@@ -101,18 +101,18 @@ export function renderVerdictSVG(v){
     }
     g += `<circle cx="${cx}" cy="${y}" r="8" fill="${it.color}"/>`
   })
-  return `<svg viewBox="0 0 700 ${H}" role="img" aria-label="Timing chart: where each voice sits relative to the beat">${g}</svg>`
+  return `<svg viewBox="0 0 700 ${H}" role="img" aria-label="Pocket chart: where each voice sits relative to the beat">${g}</svg>`
 }
 
 /* opts.width sets the viewBox width (default 700, the card size). The modal
    passes its real pixel width so the grid gains horizontal resolution —
    wider step spacing at 1:1 scale — instead of magnifying the card view.
    opts.showSwing shifts the dots by the pattern's swing so the picture
-   matches playback; p.timing_scale (the modal's timing slider) scales the
+   matches playback; p.pocket_scale (the modal's pocket slider) scales the
    displayed micro-offsets the same way it scales the audible ones. */
 export function renderGridSVG(p, opts={}){
   const W = Math.max(700, opts.width || 700);
-  const scale = p.timing_scale ?? 1;
+  const scale = p.pocket_scale ?? 1;
   const roles = ROLE_ORDER.filter(r=>p.tracks[r] && p.tracks[r].length);
   const steps = p.grid * p.bars;
   const rowH = 34, top = 26, L = 74, R = W-10;
@@ -139,7 +139,7 @@ export function renderGridSVG(p, opts={}){
     const tapR = Math.min(11, w/2 - 0.5); // enlarged invisible tap target, capped so neighbors don't overlap
     p.tracks[r].forEach(h=>{
       const offT = Math.round((h.off_ticks||0)*scale) + (opts.showSwing ? swingDelay(p, h.step, st) : 0);
-      const dispT = FLAGS.emphasizeTiming && offT
+      const dispT = FLAGS.emphasizePocket && offT
         ? Math.sign(offT) * Math.min(Math.abs(offT)*EMPH_FACTOR, st*EMPH_MAX_STEP_FRAC)
         : offT;
       const cx = x(h.step) + dispT/st*w;
@@ -165,8 +165,8 @@ export function renderGridSVG(p, opts={}){
       g += `<circle class="hit" cx="${cx}" cy="${y}" r="${Math.max(rr+2, tapR)}" fill="transparent" data-tip="${hitTip(p, r, h, st)}"/>`;
     });
   });
-  if(FLAGS.emphasizeTiming){
-    g += `<text x="${R}" y="12" fill="#E9B33B" font-family="Space Mono" font-size="10" text-anchor="end">TIMING ×${EMPH_FACTOR}</text>`;
+  if(FLAGS.emphasizePocket){
+    g += `<text x="${R}" y="12" fill="#E9B33B" font-family="Space Mono" font-size="10" text-anchor="end">POCKET ×${EMPH_FACTOR}</text>`;
   }
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Step grid for ${p.name}${FLAGS.emphasizeTiming?' (timing offsets visually exaggerated)':''}">${g}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Step grid for ${p.name}${FLAGS.emphasizePocket?' (pocket offsets visually exaggerated)':''}">${g}</svg>`;
 }
