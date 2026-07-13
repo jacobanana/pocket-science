@@ -19,7 +19,7 @@ function velGain(vel){ const n = (vel ?? 100)/127; return n*n }
 
 export function patternEvents(p){
   const st = stepTicks(p.grid)
-  const scale = p.timing_scale ?? 1 // playback-only multiplier on micro-offsets
+  const scale = p.pocket_scale ?? 1 // playback-only multiplier on micro-offsets
   const ev = []
   for(const [role, hits] of Object.entries(p.tracks)){
     for(const h of hits){

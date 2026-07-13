@@ -22,7 +22,7 @@ the metronome clicks the true (shifted) grid.
 ## Chapters
 
 The atlas is organized as **chapters** — curated lineages you walk groove by groove, with notes
-on what changes at each step. Every chapter opens with its **timing verdict**: a chart plotting
+on what changes at each step. Every chapter opens with its **pocket verdict**: a chart plotting
 where each voice of that lineage sits against the beat (ahead / on the beat / behind). Every
 pattern in the database belongs to at least one chapter:
 
